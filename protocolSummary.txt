@@ -21,13 +21,13 @@ Master to Self
 - a : adds a consumer to list of consumers, sent upon receiving a 'k' (ProcessAcceptorMessages)
 
 Consumer to Master
-- k PORT LOAD : identifying message to master upon connection to master serversocket (NEED TO ADD LOAD PART)
+- k PORT LOAD : identifying message to master upon connection to master serversocket
 
 Consumer to Producer
 - 2 : consumer ready to receive data.
 
 Producer to Master
-- c : request to get consumers
+- c FILESZ: request to get consumers, along with file size of image it needs processing (TO DO)
 
 Producer to Consumer
 -
