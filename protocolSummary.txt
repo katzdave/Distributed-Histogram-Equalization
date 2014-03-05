@@ -1,0 +1,33 @@
+List of messages
+[...] denotes an indeterminable length string
+
+Master to Consumer
+- l IP~PORT : current leader formatted as IP~PORT, need to connect to leader
+- b [IP~PORT ...] : updated backup masters list each backup formatted as IP~PORT
+
+Master to Producer
+- y [IP~PORT ...] : request can be received, consumers' IP~PORT as a list delimited by spaces (HAVEN'T DONE YET)
+- n : no free consumers, try again later
+- l IP~PORT : current leader formatted as IP~PORT, need to connect to leader
+- b [IP~PORT ...] : updated backup masters list each backup formatted as IP~PORT
+
+Master to Master
+- s PORT : request to be added as a backup with server socket port PORT
+- l IP~PORT : current leader formatted as IP~PORT, need to connect to leader
+- b [IP~PORT ...] : updated backup masters list each backup formatted as IP~PORT
+
+Master to Self
+- r : request to pair producer with consumer, sent upon receiving a 'c' (ProcessAcceptorMessages)
+- a : adds a consumer to list of consumers, sent upon receiving a 'k' (ProcessAcceptorMessages)
+
+Consumer to Master
+- k PORT LOAD : identifying message to master upon connection to master serversocket (NEED TO ADD LOAD PART)
+
+Consumer to Producer
+- 2 : consumer ready to receive data.
+
+Producer to Master
+- c : request to get consumers
+
+Producer to Consumer
+-
