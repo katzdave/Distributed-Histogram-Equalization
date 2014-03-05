@@ -106,7 +106,7 @@ public class MasterProtocol {
         break;
       case 'r':
         System.out.println("Received producer request to be paired");
-        handlePairClientWithConsumer(incomingMessage.connectedID);
+        handlePairClientWithConsumer(incomingMessage.connectedID, messagePieces[1]);
         break;
       case 'b':
         connected = true;
@@ -131,16 +131,29 @@ public class MasterProtocol {
   }
   
   //handles pairing request from client
-  void handlePairClientWithConsumer (int connectedID)
+  void handlePairClientWithConsumer (int connectedID, String filesz)
           throws InterruptedException  {
     if (notBusyConsumers.isEmpty()) {
       //send busy message
       outgoingMessages.put(new Message(connectedID, "n"));
     } else {
       //send client ip and port of client to connect to
-      outgoingMessages.put(new Message(connectedID, 
-              "y " + consumerConnectionData.get(notBusyConsumers.remove().id)));
+      String message = "y";
+      int maxConsumers = getNumConsumers(filesz);
+      for (int i = 0; i != maxConsumers; ++i) {
+        if (!notBusyConsumers.isEmpty()) {
+          message += (" " + consumerConnectionData.get(notBusyConsumers.remove().id));
+        } else {
+          break;
+        }
+      }
+      outgoingMessages.put(new Message(connectedID, message));
     }
+  }
+
+  //TO DO, get number of consumers depending on file size
+  int getNumConsumers (String filesz) {
+    return 1;
   }
 
   void addReadyConsumer(int connectedID, Double load) {
