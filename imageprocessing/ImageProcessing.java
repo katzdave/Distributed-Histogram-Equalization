@@ -31,7 +31,7 @@ public class ImageProcessing {
  
     public static void main(String[] args) throws IOException {
  
-        File original_f = new File("monsters.png");
+        File original_f = new File("./imgs/monsters.png");
         BufferedImage orig = ImageIO.read(original_f);
         ImageIO.write(orig, "png", new File("blackwhite.png"));
         BufferedImage justBlackWhite = convertBlackAndWhite(orig);
@@ -43,8 +43,8 @@ public class ImageProcessing {
         merged = applyValuesToImage(newCounts, merged);
         
         
-        ImageIO.write(merged, "png", new File("equilized.png"));
-        ImageIO.write(justBlackWhite, "png", new File("blackwhite.png"));
+        ImageIO.write(merged, "png", new File("./imgs/blackwhiteeqilized.png"));
+        ImageIO.write(justBlackWhite, "png", new File("./imgs/blackwhite.png"));
  
     }
     
