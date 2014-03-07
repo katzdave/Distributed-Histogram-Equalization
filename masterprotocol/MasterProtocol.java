@@ -269,7 +269,7 @@ public class MasterProtocol {
         consumerConnectionData.put(numConnections, connectionData);
         try {
           outgoingMessages.put(new Message(numConnections, backupString));
-          incomingMessages.put(new Message(numConnections, "a"));
+          incomingMessages.put(new Message(numConnections, "a " + acceptorMessagePieces[2]));
         } catch (InterruptedException ex) {
           System.err.println("interrupted adding message to queue");
         }
