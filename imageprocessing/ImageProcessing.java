@@ -7,11 +7,13 @@
 package imageprocessing;
 
 import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
 
@@ -31,12 +33,18 @@ public class ImageProcessing {
  
         File original_f = new File("monsters.png");
         BufferedImage orig = ImageIO.read(original_f);
-        orig = convertBlackAndWhite(orig);
-        List<BufferedImage> splitImages = splitImage(orig,3);
-        orig = mergeImages(splitImages);
-        
-        
         ImageIO.write(orig, "png", new File("blackwhite.png"));
+        BufferedImage justBlackWhite = convertBlackAndWhite(orig);
+        List<BufferedImage> splitImages = splitImage(orig,3);
+        BufferedImage merged = mergeImages(splitImages);
+        int[] counts = getFrequencyCounts(orig);
+        long size = ((long) merged.getWidth()) * ((long) merged.getHeight());
+        int[] newCounts = equalizeFreqs(counts, size);
+        merged = applyValuesToImage(newCounts, merged);
+        
+        
+        ImageIO.write(merged, "png", new File("equilized.png"));
+        ImageIO.write(justBlackWhite, "png", new File("blackwhite.png"));
  
     }
     
@@ -101,153 +109,93 @@ public class ImageProcessing {
       return result;
     }
     
-    public
- 
-    private static void writeImage(String output) throws IOException {
-        File file = new File(output+".jpg");
-        ImageIO.write(equalized, "jpg", file);
-    }
- 
-    public static BufferedImage histogramEqualization(BufferedImage original) {
- 
-        int red;
-        int green;
-        int blue;
-        int alpha;
-        int newPixel = 0;
- 
-        // Get the Lookup table for histogram equalization
-        ArrayList<int[]> histLUT = histogramEqualizationLUT(original);
- 
-        BufferedImage histogramEQ = new BufferedImage(original.getWidth(), original.getHeight(), original.getType());
- 
-        for(int i=0; i<original.getWidth(); i++) {
-            for(int j=0; j<original.getHeight(); j++) {
- 
-                // Get pixels by R, G, B
-                alpha = new Color(original.getRGB (i, j)).getAlpha();
-                red = new Color(original.getRGB (i, j)).getRed();
-                green = new Color(original.getRGB (i, j)).getGreen();
-                blue = new Color(original.getRGB (i, j)).getBlue();
- 
-                // Set new pixel values using the histogram lookup table
-                red = histLUT.get(0)[red];
-                green = histLUT.get(1)[green];
-                blue = histLUT.get(2)[blue];
- 
-                // Return back to original format
-                newPixel = colorToRGB(alpha, red, green, blue);
- 
-                // Write pixels into image
-                histogramEQ.setRGB(i, j, newPixel);
- 
-            }
+    public static int[] getFrequencyCounts(BufferedImage img){
+//      if(img.getType() != BufferedImage.TYPE_BYTE_GRAY){
+//        System.err.println("Error only valid for b/w images");
+//        System.exit(1);
+//      }
+      int[] colorFreqs = new int[256];
+      Arrays.fill(colorFreqs, 0);
+      
+      for(int x=0; x<img.getWidth(); x++){
+        for(int y=0; y<img.getHeight(); y++){
+          int rgb = img.getRGB(x, y);
+          int r = (rgb >> 16) & 0xFF;
+          int g = (rgb >> 8) & 0xFF;
+          int b = (rgb & 0xFF);
+          //int alpha = new Color(original.getRGB (x, y)).getAlpha();
+          //System.out.println(r + " " + g + " " + b);
+          colorFreqs[(r+g+b)/3]++;
         }
- 
-        return histogramEQ;
- 
+      }
+      
+      return colorFreqs;
     }
- 
-    // Get the histogram equalization lookup table for separate R, G, B channels
-    private static ArrayList<int[]> histogramEqualizationLUT(BufferedImage input) {
- 
-        // Get an image histogram - calculated values by R, G, B channels
-        ArrayList<int[]> imageHist = imageHistogram(input);
- 
-        // Create the lookup table
-        ArrayList<int[]> imageLUT = new ArrayList<int[]>();
- 
-        // Fill the lookup table
-        int[] rhistogram = new int[256];
-        int[] ghistogram = new int[256];
-        int[] bhistogram = new int[256];
- 
-        for(int i=0; i<rhistogram.length; i++) rhistogram[i] = 0;
-        for(int i=0; i<ghistogram.length; i++) ghistogram[i] = 0;
-        for(int i=0; i<bhistogram.length; i++) bhistogram[i] = 0;
- 
-        long sumr = 0;
-        long sumg = 0;
-        long sumb = 0;
- 
-        // Calculate the scale factor
-        float scale_factor = (float) (255.0 / (input.getWidth() * input.getHeight()));
- 
-        for(int i=0; i<rhistogram.length; i++) {
-            sumr += imageHist.get(0)[i];
-            int valr = (int) (sumr * scale_factor);
-            if(valr > 255) {
-                rhistogram[i] = 255;
-            }
-            else rhistogram[i] = valr;
- 
-            sumg += imageHist.get(1)[i];
-            int valg = (int) (sumg * scale_factor);
-            if(valg > 255) {
-                ghistogram[i] = 255;
-            }
-            else ghistogram[i] = valg;
- 
-            sumb += imageHist.get(2)[i];
-            int valb = (int) (sumb * scale_factor);
-            if(valb > 255) {
-                bhistogram[i] = 255;
-            }
-            else bhistogram[i] = valb;
+    
+    public static int[] sumColorFreqs(int[] a, int[] b){
+      int[] res = new int[256];
+      for(int i=0; i<256; i++){
+        res[i] = a[i] + b[i];
+      }
+      return res;
+    }
+    
+    public static int[] sumColorFreqs(List<int[]> freqs){
+      int[] res = new int[256];
+      Arrays.fill(res, 0);
+      for(int i=0; i<freqs.size(); i++){
+        for(int j=0; j<256; j++){
+          res[j] += freqs.get(i)[j];
         }
- 
-        imageLUT.add(rhistogram);
-        imageLUT.add(ghistogram);
-        imageLUT.add(bhistogram);
- 
-        return imageLUT;
- 
+      }
+      return res;
     }
- 
-    // Return an ArrayList containing histogram values for separate R, G, B channels
-    public static ArrayList<int[]> imageHistogram(BufferedImage input) {
- 
-        int[] rhistogram = new int[256];
-        int[] ghistogram = new int[256];
-        int[] bhistogram = new int[256];
- 
-        for(int i=0; i<rhistogram.length; i++) rhistogram[i] = 0;
-        for(int i=0; i<ghistogram.length; i++) ghistogram[i] = 0;
-        for(int i=0; i<bhistogram.length; i++) bhistogram[i] = 0;
- 
-        for(int i=0; i<input.getWidth(); i++) {
-            for(int j=0; j<input.getHeight(); j++) {
- 
-                int red = new Color(input.getRGB (i, j)).getRed();
-                int green = new Color(input.getRGB (i, j)).getGreen();
-                int blue = new Color(input.getRGB (i, j)).getBlue();
- 
-                // Increase the values of colors
-                rhistogram[red]++; ghistogram[green]++; bhistogram[blue]++;
- 
-            }
+    
+    public static int[] equalizeFreqs(int[] freqs, long imgSiz){
+      long[] cdf = new long[256];
+      int[] newVals = new int[256];
+      for(int i=0; i<256; i++){
+        cdf[i] = (long) freqs[i];
+      }
+      
+      long sum = 0;
+      long cdfmin = 0;
+      for(int i=0; i<256; i++){
+        sum += freqs[i];
+        cdf[i] = sum;
+        if(i == 0)
+          cdfmin = sum;
+      }
+      
+      //freqs now contains the cdf, rather than frequency counts
+      for(int i=0; i<256; i++){
+        int newVal = (int) Math.round((cdf[i]-cdfmin)*255.0/(imgSiz - cdfmin));
+        if(newVal > 255)
+          newVal = 255;
+        if(newVal < 0)
+          newVal = 0;
+        newVals[i] = newVal;
+      }
+      return newVals;
+    }
+    
+    public static BufferedImage applyValuesToImage(int[] values, BufferedImage img){
+      for(int x=0; x<img.getWidth(); x++){
+        for(int y=0; y<img.getHeight(); y++){
+          int rgb = img.getRGB(x, y);
+          int r = (rgb >> 16) & 0xFF;
+          int g = (rgb >> 8) & 0xFF;
+          int b = (rgb & 0xFF);
+          int indx = (r+g+b)/3;
+          int blackwhite = values[indx];
+          Color outputColor = new Color(blackwhite, blackwhite, blackwhite);
+//          int rgb2 = blackwhite;
+//          rgb2 = (rgb2 << 8) + blackwhite;
+//          rgb2 = (rgb2 << 8) + blackwhite;
+          img.setRGB(x, y, outputColor.getRGB());
         }
- 
-        ArrayList<int[]> hist = new ArrayList<int[]>();
-        hist.add(rhistogram);
-        hist.add(ghistogram);
-        hist.add(bhistogram);
- 
-        return hist;
- 
-    }
- 
-    // Convert R, G, B, Alpha to standard 8 bit
-    private static int colorToRGB(int alpha, int red, int green, int blue) {
- 
-        int newPixel = 0;
-        newPixel += alpha; newPixel = newPixel << 8;
-        newPixel += red; newPixel = newPixel << 8;
-        newPixel += green; newPixel = newPixel << 8;
-        newPixel += blue;
- 
-        return newPixel;
- 
-    }
- 
+      }
+      
+      return img;
+    } 
 }
