@@ -14,13 +14,21 @@ import java.net.Socket;
 import java.net.ServerSocket;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
  * @author Eli
  */
 public class Producer extends Thread {
-  
+	protected static final int THREAD_POOL_SIZE = 2;
+	protected static final int MAX_POOL_SIZE = 4;
+	protected static final int KEEP_ALIVE_TIME = 10;
+	protected static final int WORK_Q_SIZE = 2;	
   static AtomicInteger availCores;
   private BlockingQueue<Socket> clientInfo;
   private ServerSocket sSocket;
@@ -28,14 +36,14 @@ public class Producer extends Thread {
   boolean isrunning;
   
   private MasterWrapper masterSocket;
-
+	private ThreadPoolExecutor executorPool;
   public Producer(int myPort, MasterWrapper masterSocket, boolean isrunning) {
     
     //Number of available CubbyConsumers
     availCores = new AtomicInteger(1);
       //Runtime.getRuntime().availableProcessors() - 1);
     
-    clientInfo = new LinkedBlockingQueue<>();
+    clientInfo = new LinkedBlockingQueue<Socket>();
     sSocket = null;
     this.masterSocket = masterSocket;
     try {
@@ -44,11 +52,15 @@ public class Producer extends Thread {
       System.err.println("Problem creating serverSocket ");
       System.exit(0);
     }
-    
+    ThreadPoolExecutor executorPool = new ThreadPoolExecutor(THREAD_POOL_SIZE,
+															 MAX_POOL_SIZE, 
+															 KEEP_ALIVE_TIME, 
+															 TimeUnit.SECONDS,
+															 new LinkedBlockingQueue<Runnable>());
+	  
     this.isrunning = isrunning;
     for (int i=0; i<availCores.get(); i++) {
-      Consumer c = new Consumer(isrunning, masterSocket, clientInfo);
-      c.start();
+      executorPool.execute(new Consumer(isrunning, masterSocket, clientInfo));
     }
   }
   
