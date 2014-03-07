@@ -42,6 +42,9 @@ public class MasterProtocol {
   String incomingString;
   Message incomingMessage;
   String [] messagePieces;
+  String [] acceptorMessagePieces;
+  String [] disMessagePieces;
+  String [] slistMessagePieces;
 
   public MasterProtocol(int serverPort,
                         String leadIP, 
@@ -153,7 +156,13 @@ public class MasterProtocol {
 
   //TO DO, get number of consumers depending on file size
   int getNumConsumers (String filesz) {
-    return 1;
+    long maxDimension = Long.parseLong(filesz);
+    if ((maxDimension /= 1000) == 0)
+      return 1;
+    int numConsumers = 1;
+    while ((maxDimension /= 10) != 0)
+      ++numConsumers;
+    return numConsumers;
   }
 
   void addReadyConsumer(int connectedID, Double load) {
@@ -165,12 +174,12 @@ public class MasterProtocol {
     if (!connected && connectedID == -1)
       return;
     if (connectedID == -1) {
-      messagePieces = backupString.split(" ", 3);
-      currentLeaderInfo = messagePieces[1];
+      disMessagePieces= backupString.split(" ", 3);
+      currentLeaderInfo = disMessagePieces[1];
       String[] nextLeader = currentLeaderInfo.split("~");
-      if (messagePieces.length == 3)
-        backupString = "b " + messagePieces[2];
-      else if (messagePieces.length == 2)
+      if (disMessagePieces.length == 3)
+        backupString = "b " + disMessagePieces[2];
+      else if (disMessagePieces.length == 2)
         backupString = "b";
       boolean resolved = false;
       while (!resolved) {
@@ -231,19 +240,19 @@ public class MasterProtocol {
       return false;
     }
     System.out.println("Identifying Message: " + incomingString);
-    messagePieces = incomingString.split(" ");
-    switch(messagePieces[0].charAt(0)) {
+    acceptorMessagePieces = incomingString.split(" ");
+    switch(acceptorMessagePieces[0].charAt(0)) {
       case 'c':
         try {
           outgoingMessages.put(new Message(numConnections, backupString));
-          incomingMessages.put(new Message(numConnections, "r"));
+          incomingMessages.put(new Message(numConnections, "r " + acceptorMessagePieces[1]));
         } catch (InterruptedException ex) {
           System.err.println("interrupted adding message to queue");
         }
         break;
       case 'k': 
         connectionData = (cSocket.getInetAddress().getHostAddress().toString() 
-                + " " + messagePieces[1]);
+                + " " + acceptorMessagePieces[1]);
         consumerConnectionData.put(numConnections, connectionData);
         try {
           outgoingMessages.put(new Message(numConnections, backupString));
@@ -254,7 +263,7 @@ public class MasterProtocol {
         break;
       case 's':
         connectionData = (cSocket.getInetAddress().getHostAddress().toString() 
-                + "~" + messagePieces[1]);
+                + "~" + acceptorMessagePieces[1]);
         backupsConnectionData.put(numConnections, connectionData);
         serverList.add(connectionData);
         backupString += (" " +connectionData);
@@ -262,7 +271,7 @@ public class MasterProtocol {
         sendToAllUpdate();
         break;
       default:
-        System.err.println("Received invalid message!: " + messagePieces[0]);
+        System.err.println("Received invalid message!: " + acceptorMessagePieces[0]);
         return false;
     }
     return true;
@@ -295,11 +304,11 @@ public class MasterProtocol {
   
   void updateServerList() {
     System.out.println("backupList: " + backupString);
-    messagePieces = backupString.split(" ");
+    slistMessagePieces = backupString.split(" ");
     serverList.clear();
-    for (int i = 1; i != messagePieces.length; ++i) {
-      serverList.add(messagePieces[i]);
-      System.out.println(messagePieces[i]);
+    for (int i = 1; i != slistMessagePieces.length; ++i) {
+      serverList.add(slistMessagePieces[i]);
+      System.out.println(slistMessagePieces[i]);
     }
   }
 
