@@ -8,7 +8,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.Vector;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -61,7 +61,7 @@ public class MasterProtocol {
     this.notBusyConsumers = new PriorityBlockingQueue<>();
     
     this.backupsConnectionData = new ConcurrentHashMap<>();
-    serverList = new LinkedList<> ();
+    serverList = new Vector<> ();
     this.serverPort = serverPort;
     this.isrunning = isrunning;
     connected = false;
@@ -113,9 +113,8 @@ public class MasterProtocol {
         break;
       case 'b':
         connected = true;
-        System.out.println("Received updated backup string!");
         backupString = incomingMessage.message;
-        System.out.println(backupString);
+        System.out.println("Received updated backupString: " + backupString);
         break;
       case 'l':
         if (sockets.containsKey(-1)) {
@@ -125,7 +124,6 @@ public class MasterProtocol {
         }
         messagePieces = messagePieces[1].split("~");
         connectToLeader(messagePieces[0], messagePieces[1]);
-        outgoingMessages.put(new Message(-1, "s " + serverPort));
         break;
       default:
         System.err.println("Received invalid message from clientID: "
@@ -133,6 +131,14 @@ public class MasterProtocol {
     }
   }
   
+  boolean isMyIpPort(String ip, String port) throws UnknownHostException {
+    if ((ip.equals(Inet4Address.getLocalHost().getHostAddress())
+               || ip.equals(InetAddress.getLocalHost().getHostAddress())
+               || ip.equals("127.0.0.1"))
+               && port.equals(""+serverPort))
+      return true;
+    return false;
+  }
   //handles pairing request from client
   void handlePairClientWithConsumer (int connectedID, String filesz)
           throws InterruptedException  {
@@ -175,6 +181,11 @@ public class MasterProtocol {
       return;
     if (connectedID == -1) {
       disMessagePieces= backupString.split(" ", 3);
+
+      //wait until new backupString is updated
+      while (disMessagePieces.length < 2) {
+        disMessagePieces= backupString.split(" ", 3);
+      }
       currentLeaderInfo = disMessagePieces[1];
       String[] nextLeader = currentLeaderInfo.split("~");
       if (disMessagePieces.length == 3)
@@ -184,12 +195,7 @@ public class MasterProtocol {
       boolean resolved = false;
       while (!resolved) {
         try {
-          if ((nextLeader[0].
-                   equals(Inet4Address.getLocalHost().getHostAddress())
-               || nextLeader[0].
-                   equals(InetAddress.getLocalHost().getHostAddress())
-               || nextLeader[0].equals("127.0.0.1"))
-               && (nextLeader[1].equals(""+serverPort))) {
+          if (isMyIpPort(nextLeader[0], nextLeader[1])) {
             System.out.println("I'm the leader!");
             isLeader = true;
             updateServerList();
@@ -198,6 +204,7 @@ public class MasterProtocol {
             connectToLeader(nextLeader[0], nextLeader[1]);
             resolved = true;
           }
+          //System.out.println("new backupString: " + backupString);
         } catch (UnknownHostException e) {
           System.err.println("Resolution bug!");
         }
@@ -224,23 +231,29 @@ public class MasterProtocol {
                                          BufferedReader incomingStream, 
                                          Socket cSocket) 
           throws IOException {
-    if (!isLeader) {
-      System.err.println("I'm not a leader!");
-      System.out.println("Sending leader info");
-      System.out.println(currentLeaderInfo);
-      try {
-        outgoingMessages.put(new Message(numConnections, 
-                 "l " + currentLeaderInfo));
-      } catch (InterruptedException ex) {}
-      return false;
-    }
     incomingString = incomingStream.readLine();
     if (incomingString == null) {
       System.out.println("Could not get identifying message!");
       return false;
     }
-    System.out.println("Identifying Message: " + incomingString);
+    //System.out.println("Identifying Message: " + incomingString);
     acceptorMessagePieces = incomingString.split(" ");
+    if (!isLeader) {
+      if (acceptorMessagePieces[0].equals("s")) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+      }
+      if (!isLeader) {
+        //System.err.println("I'm not a leader! Sending leader info");
+        try {
+          outgoingMessages.put(new Message(numConnections, 
+                 "l " + currentLeaderInfo));
+        } catch (InterruptedException ex) {}
+        return false;
+      }
+    }
     switch(acceptorMessagePieces[0].charAt(0)) {
       case 'c':
         try {
@@ -264,10 +277,12 @@ public class MasterProtocol {
       case 's':
         connectionData = (cSocket.getInetAddress().getHostAddress().toString() 
                 + "~" + acceptorMessagePieces[1]);
+        acceptorMessagePieces = backupString.split(" ");
         backupsConnectionData.put(numConnections, connectionData);
-        serverList.add(connectionData);
-        backupString += (" " +connectionData);
-        System.out.println(backupString);
+        if (!serverList.contains(connectionData)) {
+          backupString += (" " +connectionData);
+          serverList.add(connectionData);
+        }
         sendToAllUpdate();
         break;
       default:
@@ -279,9 +294,8 @@ public class MasterProtocol {
   
   void updateBackupString() {
     backupString = "b";
-    Iterator<String> iterator = serverList.iterator();
-    while (iterator.hasNext()) {
-      backupString += (" " + iterator.next());
+    for (int i = 0; i != serverList.size(); ++i) {
+      backupString += (" " + serverList.get(i));
     }
   }
   
@@ -303,12 +317,10 @@ public class MasterProtocol {
   }
   
   void updateServerList() {
-    System.out.println("backupList: " + backupString);
     slistMessagePieces = backupString.split(" ");
     serverList.clear();
     for (int i = 1; i != slistMessagePieces.length; ++i) {
       serverList.add(slistMessagePieces[i]);
-      System.out.println(slistMessagePieces[i]);
     }
   }
 
@@ -320,7 +332,6 @@ public class MasterProtocol {
       leaderSocket = new Socket(leaderIP, Integer.parseInt(leaderPort));
       currentLeaderInfo = (leaderIP + "~" + leaderPort);
       sockets.put(-1, leaderSocket);
-      System.out.println(backupString);
       BufferedReader masterStream = new BufferedReader(
               new InputStreamReader(leaderSocket.getInputStream()));
       Connection connection= new Connection(-1,
@@ -329,6 +340,11 @@ public class MasterProtocol {
                                             masterStream,
                                             this);
       connection.start();
+      try {
+        outgoingMessages.put(new Message(-1, "s " + serverPort));
+      } catch (InterruptedException e) {
+
+      }
     } catch (IOException ex) {
       System.err.println("Couldn't connect to master!");
       System.exit(1);
