@@ -7,7 +7,6 @@
 package imageprocessing;
 
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -27,17 +26,19 @@ public class ImageProcessing {
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */  
-    private static BufferedImage original, equalized;
+    private static String DELIM = " ";
  
     public static void main(String[] args) throws IOException {
  
         File original_f = new File("./imgs/monsters.png");
         BufferedImage orig = ImageIO.read(original_f);
-        ImageIO.write(orig, "png", new File("blackwhite.png"));
+        
         BufferedImage justBlackWhite = convertBlackAndWhite(orig);
         List<BufferedImage> splitImages = splitImage(orig,3);
         BufferedImage merged = mergeImages(splitImages);
         int[] counts = getFrequencyCounts(orig);
+        counts = deserializeVector(serializeVector(counts));
+        
         long size = ((long) merged.getWidth()) * ((long) merged.getHeight());
         int[] newCounts = equalizeFreqs(counts, size);
         merged = applyValuesToImage(newCounts, merged);
@@ -56,7 +57,6 @@ public class ImageProcessing {
       Graphics2D graphics = output.createGraphics();
       graphics.drawImage(img, 0, 0, null);
       
-      //ImageIO.write(output, "png", new File("blackwhite.png"));
       return output;
     }
     
@@ -110,10 +110,6 @@ public class ImageProcessing {
     }
     
     public static int[] getFrequencyCounts(BufferedImage img){
-//      if(img.getType() != BufferedImage.TYPE_BYTE_GRAY){
-//        System.err.println("Error only valid for b/w images");
-//        System.exit(1);
-//      }
       int[] colorFreqs = new int[256];
       Arrays.fill(colorFreqs, 0);
       
@@ -123,8 +119,6 @@ public class ImageProcessing {
           int r = (rgb >> 16) & 0xFF;
           int g = (rgb >> 8) & 0xFF;
           int b = (rgb & 0xFF);
-          //int alpha = new Color(original.getRGB (x, y)).getAlpha();
-          //System.out.println(r + " " + g + " " + b);
           colorFreqs[(r+g+b)/3]++;
         }
       }
@@ -189,13 +183,34 @@ public class ImageProcessing {
           int indx = (r+g+b)/3;
           int blackwhite = values[indx];
           Color outputColor = new Color(blackwhite, blackwhite, blackwhite);
-//          int rgb2 = blackwhite;
-//          rgb2 = (rgb2 << 8) + blackwhite;
-//          rgb2 = (rgb2 << 8) + blackwhite;
           img.setRGB(x, y, outputColor.getRGB());
         }
       }
-      
       return img;
     } 
+    
+    public static String serializeVector(int[] vector){
+      if(vector.length != 256){
+        System.err.println("invalid vector");
+        System.exit(1);
+      }
+      String serialized = "";
+      for(int i=0; i<256; i++){
+        serialized += vector[i] + DELIM;
+      }
+      return serialized.trim();
+    }
+    
+    public static int[] deserializeVector(String serialized){
+      String[] split = serialized.split(DELIM);
+      int[] deserialized = new int[256];
+      if(split.length != 256){
+        System.err.println("invalid vector");
+        System.exit(1);
+      }
+      for(int i=0; i<256; i++){
+        deserialized[i] = Integer.parseInt(split[i]);
+      }
+      return deserialized;
+    }
 }

@@ -104,11 +104,11 @@ public class ImageClient {
     try (
       Socket tempConsumerSocket = new Socket(this.consumerIP, this.consumerPort);
     ){
-	System.out.println("Connected to: " + tempConsumerSocket);
-      BufferedImage img = ImageIO.read(new File(input));
-    if (img == null) {
-      System.out.println("Couldn't read " + input);
-    }
+        System.out.println("Connected to: " + tempConsumerSocket);
+        BufferedImage img = ImageIO.read(new File(input));
+      if (img == null) {
+        System.out.println("Couldn't read " + input);
+      }
       ImageIO.write(img,splitImg[1],tempConsumerSocket.getOutputStream());
       
       BufferedImage imgFromServer;
