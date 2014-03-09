@@ -63,8 +63,7 @@ public class Producer extends Thread {
         
         if(availCores.get() > 0) {
           //tell Master we're not too busy.
-          double load = "3.2"; //SIGAR
-          masterSocket.sendMessage("a"+DELIM+load);
+          masterSocket.sendMessage("a"+DELIM+"3.2");//SIGAR
         }
         executorPool.execute(new Consumer(client, masterSocket,executorPool));
         
