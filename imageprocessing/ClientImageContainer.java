@@ -100,9 +100,8 @@ public class ClientImageContainer implements Runnable{
 
         consumerOut.writeBytes(ImageProcessing.serializeVector(FrequencyCounts) + "\n");
         
-        BufferedImage imgFromServer;
-        imgFromServer = ImageIO.read(tempConsumerSocket.getInputStream());
-        if(imgFromServer == null){
+        Image = ImageIO.read(tempConsumerSocket.getInputStream());
+        if(Image == null){
           System.err.println("Error image rcvd null");
           System.exit(-1);
         }
