@@ -150,6 +150,7 @@ public class Consumer implements Runnable {
       }
       String sendString = ImageProcessing.serializeVector(sum);
       sendMessage(clientSocket, sendString);
+      updateBusyStatus();
       
     } catch (InterruptedException ie) {
       ie.printStackTrace();
@@ -231,6 +232,7 @@ public class Consumer implements Runnable {
         ioe.printStackTrace();
       }
       System.out.println("<Consumer> sent img.");
+      updateBusyStatus();
       
     } catch (InterruptedException ie) {
       ie.printStackTrace();
