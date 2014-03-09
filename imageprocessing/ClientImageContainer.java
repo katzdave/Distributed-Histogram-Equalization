@@ -25,6 +25,7 @@ public class ClientImageContainer implements Runnable{
   String ConsumerIP;
   int ConsumerPort;
   int CoresAllowed;
+  int ClientId;
   public BufferedImage Image;
   String ImageType;
   boolean isFirstConnection;
@@ -62,6 +63,8 @@ public class ClientImageContainer implements Runnable{
           System.err.println("<Client> consumer not ready");
           System.exit(-1);
         }
+        String[] split = res.split(DELIM);
+        ClientId = Integer.parseInt(split[1]);
 
         ImageIO.write(Image, ImageType, tempConsumerSocket.getOutputStream());
         res = consumerIn.readLine();
@@ -85,7 +88,7 @@ public class ClientImageContainer implements Runnable{
         DataOutputStream consumerOut =
           new DataOutputStream(tempConsumerSocket.getOutputStream());
 
-        consumerOut.writeBytes("v\n");
+        consumerOut.writeBytes("v" + DELIM + ClientId + "\n");
         //System.out.println("<Client> sent out: i");
         String res = consumerIn.readLine();
         //System.out.println("<Client> received in: " + res);

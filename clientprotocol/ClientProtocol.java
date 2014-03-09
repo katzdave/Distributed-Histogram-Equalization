@@ -75,7 +75,6 @@ public class ClientProtocol {
 
       //Master sends an available consumer or BUSY if none
       consumerString = master_in.readLine();
-
       System.out.println(consumerString);
       
     } catch (IOException ioe) {
@@ -295,7 +294,6 @@ public class ClientProtocol {
             SingleConsumer = false;
           }
         }
-        Consumer = new ConnectionInfo(splat[1], Integer.parseInt(splat[2]));
         return true;
     }
     System.err.println("I have no idea how we got here (ParseConsumerString)");

@@ -102,7 +102,7 @@ public class MasterProtocol {
     incomingMessage = incomingMessages.take();
     messagePieces = incomingMessage.message.split(" ");
     System.out.println("Processing message from " 
-            + incomingMessage.connectedID + ": " + messagePieces[0]);
+            + incomingMessage.connectedID + ": " + incomingMessage.message);
     switch(messagePieces[0].charAt(0)) {
       case 'a':
         System.out.println("Received add ready consumer request");
@@ -259,6 +259,7 @@ public class MasterProtocol {
         return false;
       }
     }
+    System.out.println("~!!!!!: " + incomingString);
     switch(acceptorMessagePieces[0].charAt(0)) {
       case 'c':
         try {
