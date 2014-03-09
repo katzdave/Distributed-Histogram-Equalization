@@ -11,7 +11,7 @@ import imageprocessing.*;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Collection;
-
+import java.util.concurrent.ConcurrentHashMap;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -44,12 +44,16 @@ public class Consumer implements Runnable {
   
   private MasterWrapper masterSocket;
   private Socket clientSocket;
+  private ConcurrentHashMap<Integer,List<BufferedImage>> clientMap;
   private ExecutorService executor;
+  
   public Consumer(Socket clientSocket, 
-                  MasterWrapper masterSocket, 
+                  MasterWrapper masterSocket,
+                  ConcurrentHashMap<Integer,List<BufferedImage>> clientMap,
                   ExecutorService executor) {
     this.clientSocket = clientSocket;
     this.masterSocket = masterSocket;
+    this.clientMap = clientMap;
     this.executor = executor;
   }
   
@@ -107,13 +111,6 @@ public class Consumer implements Runnable {
     System.out.println("<Consumer> sent img.");
     
     updateBusyStatus();
-    
-    try {
-      clientSocket.close();
-    } catch (IOException ioe) {
-      ioe.printStackTrace();
-      return;
-    }
   }
   
   private void splitAndProcessImage(Socket clientSocket, String msg) {
@@ -123,7 +120,8 @@ public class Consumer implements Runnable {
       return;
     }
     int numThreads = Integer.parseInt(split[1]);
-    sendMessage(clientSocket, READY);
+    int uniqID = Producer.getUniqueID();
+    sendMessage(clientSocket, READY + DELIM + uniqID);
     BufferedImage img = null;
     try {
       img = ImageIO.read(clientSocket.getInputStream());
@@ -134,9 +132,11 @@ public class Consumer implements Runnable {
     
     System.out.println("<Consumer> received img");
     List<BufferedImage> list = ImageProcessing.splitImage(img,numThreads);
-    Collection<DoStuff> dostuff = new LinkedList<DoStuff>();
+    clientMap.put(uniqID,list);//Map each client to a unique ID;
+    
+    Collection<FreqCalculator> dostuff = new LinkedList<FreqCalculator>();
     for (int i=0; i<numThreads; i++) {
-      dostuff.add(new DoStuff(list.get(i)));
+      dostuff.add(new FreqCalculator(list.get(i)));
     }
     List<Future<int[]>> freqlist = null;
     try {
@@ -152,14 +152,16 @@ public class Consumer implements Runnable {
       ie.printStackTrace();
     } catch (ExecutionException ee) {
       ee.printStackTrace();
-    }
-    
-    
+    }    
   }
-  class DoStuff implements Callable<int[]> {
+  
+  /*
+   * Does intensive frequency calculation on an image
+   */
+  class FreqCalculator implements Callable<int[]> {
     private BufferedImage img;
     
-    DoStuff(BufferedImage img) {
+    FreqCalculator(BufferedImage img) {
       this.img = img;
     }
     
@@ -169,8 +171,65 @@ public class Consumer implements Runnable {
     }
   }
   
-  private void applyToImage(Socket clientSocket, String msg) {
+  /*
+   * Intensively applies result to image
+   */
+  class Applyer implements Callable<BufferedImage> {
+    private BufferedImage img;
+    private int[] valuesToApply;
     
+    Applyer(int[] valuesToApply, BufferedImage img) {
+      this.img = img;
+      this.valuesToApply = valuesToApply;
+    }
+    
+    @Override
+    public BufferedImage call() {
+      return ImageProcessing.applyValuesToImage(valuesToApply, img);
+    }
+  }
+  
+  private void applyToImage(Socket clientSocket, String msg) {
+    String[] split = msg.split(DELIM);
+    if (split.length < 2) {
+      System.err.println("<Consumer> received bad message");
+      return;
+    }
+    int id = Integer.parseInt(split[1]);
+    List<BufferedImage> list = clientMap.get(id);
+    if (list == null) {
+      System.err.println("This client hasn't previously sent images!");
+      return;
+    }
+    sendMessage(clientSocket, READY);
+    
+    String serVec = readMessage(clientSocket);
+    int[] valuesToApply = ImageProcessing.deserializeVector(serVec);
+    
+    Collection<Applyer> dostuff = new LinkedList<Applyer>();
+    for (int i=0; i<list.size(); i++) {
+      dostuff.add(new Applyer(valuesToApply,list.get(i)));
+    }
+    List<Future<BufferedImage>> applylist = null;
+    List<BufferedImage> images = new LinkedList<BufferedImage>();
+    try {
+      applylist = executor.invokeAll(dostuff);
+      for (int i=0; i<applylist.size(); i++) {
+        images.add(applylist.get(i).get());
+      }
+      BufferedImage outpImg = ImageProcessing.mergeImages(images);
+      try {
+        ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+      }
+      System.out.println("<Consumer> sent img.");
+      
+    } catch (InterruptedException ie) {
+      ie.printStackTrace();
+    } catch (ExecutionException ee) {
+      ee.printStackTrace();
+    }    
   }
   
   private void updateBusyStatus() {

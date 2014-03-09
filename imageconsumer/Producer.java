@@ -7,6 +7,8 @@
 package imageconsumer;
 
 import masterserver.*;
+
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,6 +19,10 @@ import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.List;
+
+import java.awt.image.BufferedImage;
+
 
 /**
  *
@@ -26,6 +32,7 @@ public class Producer extends Thread {
   public static final String DELIM = " ";
 	public static final int NUM_THREADS = 4;
   static AtomicInteger availCores;
+  static AtomicInteger uniqueID;
   
   private ExecutorService executorPool;
   private ServerSocket sSocket;
@@ -33,6 +40,8 @@ public class Producer extends Thread {
   boolean isrunning;
   
   private MasterWrapper masterSocket;
+  
+  private ConcurrentHashMap<Integer,List<BufferedImage>> clientMap;
 
   public Producer(int myPort, MasterWrapper masterSocket, boolean isrunning) {
     
@@ -47,7 +56,7 @@ public class Producer extends Thread {
       System.err.println("Problem creating serverSocket ");
       System.exit(0);
     }
-    
+    clientMap = new ConcurrentHashMap<Integer,List<BufferedImage>>();
     executorPool = Executors.newCachedThreadPool();
 	  
     this.isrunning = isrunning;
@@ -65,12 +74,19 @@ public class Producer extends Thread {
           //tell Master we're not too busy.
           masterSocket.sendMessage("a"+DELIM+"3.2");//SIGAR
         }
-        executorPool.execute(new Consumer(client, masterSocket,executorPool));
+        
+        executorPool.execute(new Consumer(client, 
+                                          masterSocket, 
+                                          clientMap,
+                                          executorPool));
         
       } catch (IOException ioe) {
         System.err.println("Producer.start(): Problem accepting client");
       }
     }
-  }    
+  } 
   
+  public static int getUniqueID() {
+    return uniqueID.getAndIncrement();
+  }
 }
