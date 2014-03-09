@@ -25,7 +25,7 @@ public class ClientImageContainer implements Runnable{
   String ConsumerIP;
   int ConsumerPort;
   int CoresAllowed;
-  BufferedImage Image;
+  public BufferedImage Image;
   String ImageType;
   boolean isFirstConnection;
   public int[] FrequencyCounts;

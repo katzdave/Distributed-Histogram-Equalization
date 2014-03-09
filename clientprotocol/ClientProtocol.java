@@ -241,10 +241,12 @@ public class ClientProtocol {
     
     int[] frequencyCounts = new int[256];
     Arrays.fill(frequencyCounts, 0);
-    for(int i=0; i<containers.size(); i++){
-      frequencyCounts = ImageProcessing.sumColorFreqs(
-              frequencyCounts, containers.get(i).FrequencyCounts);
-    }
+    frequencyCounts = ImageProcessing.sumColorFreqsFromCIC(containers);
+    
+//    for(int i=0; i<containers.size(); i++){
+//      frequencyCounts = ImageProcessing.sumColorFreqs(
+//              frequencyCounts, containers.get(i).FrequencyCounts);
+//    }
     frequencyCounts = ImageProcessing.equalizeFreqs(
             frequencyCounts, (long)image.getHeight()*(long)image.getWidth());
     
@@ -258,6 +260,9 @@ public class ClientProtocol {
     while(!executor.isTerminated()){
       ;
     }
+    
+    image = ImageProcessing.mergeImagesFromCIC(containers);
+    // Write image here!
 
     return true;
   }
