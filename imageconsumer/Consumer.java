@@ -175,7 +175,7 @@ public class Consumer implements Runnable {
   
   private void updateBusyStatus() {
     if (Producer.availCores.get() == 0) {
-      masterSocket.sendMessage("a");
+      masterSocket.sendMessage("a"+DELIM+"3.2"); // SIGAR
     }
     Producer.availCores.getAndIncrement();
   }

@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutorService;
  * @author Eli
  */
 public class Producer extends Thread {
+  public static final String DELIM = " ";
 	public static final int NUM_THREADS = 4;
   static AtomicInteger availCores;
   
@@ -62,7 +63,8 @@ public class Producer extends Thread {
         
         if(availCores.get() > 0) {
           //tell Master we're not too busy.
-          masterSocket.sendMessage("a");
+          double load = "3.2"; //SIGAR
+          masterSocket.sendMessage("a"+DELIM+load);
         }
         executorPool.execute(new Consumer(client, masterSocket,executorPool));
         
