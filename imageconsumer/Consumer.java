@@ -23,65 +23,53 @@ import java.util.concurrent.BlockingQueue;
  *
  * @author David
  */
-public class Consumer extends Thread {
+public class Consumer implements Runnable {
   private MasterWrapper masterSocket;
-  private boolean isrunning;
-  private final BlockingQueue<Socket> clientInfo;
+  private Socket clientSocket;
   
-  public Consumer(boolean isrunning, 
-    MasterWrapper masterSocket, 
-    BlockingQueue<Socket> clientInfo) {
-    super("Consumer");
+  public Consumer(Socket clientSocket, MasterWrapper masterSocket) {
+    this.clientSocket = clientSocket;
     this.masterSocket = masterSocket;
-    this.isrunning = isrunning;
-    this.clientInfo = clientInfo;
   }
   
   @Override
   public void run() {
-    System.out.println("Consumer running.");
-    int i = 0;
-    while (isrunning) {
-      try {
-	Socket clientSocket = clientInfo.take();
-      BufferedReader clientIn = new BufferedReader(
-        new InputStreamReader(clientSocket.getInputStream()));
-      DataOutputStream clientOut =
-        new DataOutputStream(clientSocket.getOutputStream());
-
-      String res = clientIn.readLine();
+    System.out.println("Consumer received connection.");
+    try {
+      //See what the consumer wants me to do.
+      String res = ConsumerServer.readMessage(clientSocket);
       System.out.println("<Consumer> received: " + res);
-      if(res.charAt(0) != 'i') {
+      if(res.charAt(0) != '#') {
 	      System.err.println("<Consumer> client not ready");
 	      clientSocket.close();
 	      updateBusyStatus();
-	      continue;
+	      return;
       }
-      clientOut.writeBytes("2\n");
+      
+      //Tell the Consumer "I'm ready to do what you want."
+      ConsumerServer.sendMessage(clientSocket, "2");
       System.out.println("<Consumer> sent out: 2");
       
-	BufferedImage img = ImageIO.read(clientSocket.getInputStream());
-	System.out.println("<Consumer> received img: " + img);
-	img = HistogramEQ.histogramEqualization(img);
-	BufferedImage outpImg = copyImage(img);
-
-        ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
-	System.out.println("<Consumer> sent img: " + outpImg);
-	
-	updateBusyStatus();
-        clientSocket.close();
-      } catch (InterruptedException ie) {
-        System.err.println("Consumer.run(): Problem getting client socket");
-      } catch (IOException ioe) {
-        System.err.println("Consumer.run(): Problem reading or writing");
-      }
+      BufferedImage img = ImageIO.read(clientSocket.getInputStream());
+      System.out.println("<Consumer> received img");
+      img = HistogramEQ.histogramEqualization(img);
+      BufferedImage outpImg = copyImage(img);
+      
+      ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
+      System.out.println("<Consumer> sent img.");
+      
+      updateBusyStatus();
+      clientSocket.close();
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
     }
   }
+  
   private void updateBusyStatus() {
-        if (Producer.availCores.get() == 0) {
-          ConsumerServer.sendMessage(masterSocket.master,"a");
-        }
-        Producer.availCores.getAndIncrement();
+    if (Producer.availCores.get() == 0) {
+      ConsumerServer.sendMessage(masterSocket.master,"a");
+    }
+    Producer.availCores.getAndIncrement();
   }
   
   public static BufferedImage copyImage(BufferedImage source){
