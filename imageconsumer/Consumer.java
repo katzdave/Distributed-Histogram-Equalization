@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  *
- * @author David
+ * @author Eli
  */
 public class Consumer implements Runnable {
   
@@ -69,13 +69,13 @@ public class Consumer implements Runnable {
       }
       switch (res.charAt(0)) {
         case 'i':
-          processImage(clientSocket, res);
+          processImage(clientSocket, res); //process an individual image
           break;
         case '#':
-          splitAndProcessImage(clientSocket, res);
+          splitAndProcessImage(clientSocket, res); //split image and frequency count it
           break;
         case 'v':
-          applyToImage(clientSocket, res);
+          applyToImage(clientSocket, res); //get changes to image and apply them
           break;
         default:
           System.err.println("<Consumer> received bad message");
@@ -101,7 +101,7 @@ public class Consumer implements Runnable {
     }
     
     System.out.println("<Consumer> received img");
-    //img = HistogramEQ.histogramEqualization(img);
+    img = HistogramEQ.histogramEqualization(img);
     BufferedImage outpImg = copyImage(img);
     try {
       ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
@@ -129,9 +129,10 @@ public class Consumer implements Runnable {
       ioe.printStackTrace();
       return;
     }
+    System.out.println("<Consumer> received img to split");
     
-    System.out.println("<Consumer> received img");
     List<BufferedImage> list = ImageProcessing.splitImage(img,numThreads);
+    System.out.println("<Consumer> split img");
     clientMap.put(uniqID,list);//Map each client to a unique ID;
     
     Collection<FreqCalculator> dostuff = new LinkedList<FreqCalculator>();

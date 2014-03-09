@@ -60,6 +60,9 @@ public class Producer extends Thread {
     executorPool = Executors.newCachedThreadPool();
 	  
     this.isrunning = isrunning;
+    for (int i=0; i<NUM_THREADS; i++) {
+      masterSocket.sendMessage("a"+DELIM+"3.2");
+    }
   }
   
   @Override
