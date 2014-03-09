@@ -15,8 +15,8 @@ import java.net.ServerSocket;
 import java.net.InetSocketAddress;
 import java.io.DataOutputStream;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.IOException;
 import java.util.Arrays;
 
 
@@ -41,16 +41,17 @@ public class ConsumerServer {
     this.port = port;
     isrunning = true;
 
-    masterSocket = new MasterWrapper(masterIP, masterPort);
+    masterSocket = new MasterWrapper();
+    updateMaster(masterIP,masterPort);
+    
     producer = new Producer(port, masterSocket, isrunning);
     producer.start();
     
-    sendMessage(masterSocket.master,"k "+port);
   }
   
   void start() {
     while (isrunning) {
-      String msg = readMessage(masterSocket.master);
+      String msg = masterSocket.readMessage();
       if (msg != null) {
         processMasterMessages(msg);
       } else { //Master disconnected.
@@ -88,29 +89,9 @@ public class ConsumerServer {
   
   private void updateMaster(String ip, int port) {
     masterSocket.updateMaster(ip,port);
-    sendMessage(masterSocket.master,"k "+port);
+    double load = 3.2; // Put SIGAR load here.
+    masterSocket.sendMessage("k"+DELIM+port+DELIM+load;
     System.out.println("Connected to master: " + ip+DELIM2+port);
-  }
-
-  public static void sendMessage(Socket s, String message) {
-    try {
-      DataOutputStream ostream = new DataOutputStream(s.getOutputStream());
-      ostream.writeBytes(message + '\n');
-    } catch (IOException except) {
-      System.err.println("Failed to create output stream for socket " + s);
-    }
-  }
-  
-	public static String readMessage(Socket s) {
-    String readString = "";
-    try {
-      BufferedReader istream = new BufferedReader(
-                                  new InputStreamReader(s.getInputStream()));
-      readString = istream.readLine();
-    } catch (IOException IOException) {
-      System.err.println("Problem reading message.");
-    }
-    return readString;
   }
   
   public static void main(String[] args) throws IOException {
