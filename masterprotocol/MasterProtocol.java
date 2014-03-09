@@ -270,7 +270,7 @@ public class MasterProtocol {
         break;
       case 'k': 
         connectionData = (cSocket.getInetAddress().getHostAddress().toString() 
-                + " " + acceptorMessagePieces[1]);
+                + "~" + acceptorMessagePieces[1]);
         consumerConnectionData.put(numConnections, connectionData);
         try {
           outgoingMessages.put(new Message(numConnections, backupString));
