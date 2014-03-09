@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -63,7 +62,7 @@ public class Producer extends Thread {
         
         if(availCores.get() > 0) {
           //tell Master we're not too busy.
-          ConsumerServer.sendMessage(masterSocket.master,"a");
+          masterSocket.sendMessage("a");
         }
         executorPool.execute(new Consumer(client, masterSocket));
         
