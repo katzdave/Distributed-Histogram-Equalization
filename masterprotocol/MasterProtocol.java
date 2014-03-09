@@ -97,6 +97,7 @@ public class MasterProtocol {
    * character 'r': request
    * Producers will request connections
    */
+  // all handled in one thread
   public void processManagerMessages() throws InterruptedException {
     incomingMessage = incomingMessages.take();
     messagePieces = incomingMessage.message.split(" ");
@@ -160,14 +161,16 @@ public class MasterProtocol {
     }
   }
 
-  //TO DO, get number of consumers depending on file size
   int getNumConsumers (String filesz) {
-    long maxDimension = Long.parseLong(filesz);
-    if ((maxDimension /= 1000) == 0)
+    long size = Long.parseLong(filesz);
+    if ((size /= 10000) == 0)
       return 1;
     int numConsumers = 1;
-    while ((maxDimension /= 10) != 0)
-      ++numConsumers;
+    while ((size /= 10) != 0) {
+      numConsumers*=2;
+      if (numConsumers >= notBusyConsumers.size())
+        return notBusyConsumers.size();
+    }
     return numConsumers;
   }
 
@@ -175,6 +178,7 @@ public class MasterProtocol {
     notBusyConsumers.add(new ConsumerInfo(connectedID, load));
   }
   
+  //handled across multiple threads, utilizing Connection class
   public void handleDisconnection(int connectedID) {
     sockets.remove(connectedID);
     if (!connected && connectedID == -1)
@@ -227,6 +231,7 @@ public class MasterProtocol {
   }
   
   //first process identifying string, then send out backup list
+  //handled in one thread: ConnectionAcceptor class
   public boolean processAcceptorMessages(int numConnections, 
                                          BufferedReader incomingStream, 
                                          Socket cSocket) 
@@ -292,14 +297,16 @@ public class MasterProtocol {
     return true;
   }
   
-  void updateBackupString() {
+  //may be called across multiple Connection threads
+  synchronized void updateBackupString() {
     backupString = "b";
     for (int i = 0; i != serverList.size(); ++i) {
       backupString += (" " + serverList.get(i));
     }
   }
   
-  void sendToAllUpdate() {
+  //may be called across multiple Connection threads
+  synchronized void sendToAllUpdate() {
     notifyList = backupsConnectionData.keySet();
     sendToNotifyList();
     notifyList = consumerConnectionData.keySet();

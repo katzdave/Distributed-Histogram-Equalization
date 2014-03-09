@@ -26,7 +26,7 @@ public class ClientImageContainer implements Runnable{
   BufferedImage Image;
   String ImageType;
   boolean isFirstConnection;
-  int[] FrequencyCounts;
+  public int[] FrequencyCounts;
   
   public ClientImageContainer(
           String ip, int port, int cores, BufferedImage img, String type){
@@ -52,7 +52,7 @@ public class ClientImageContainer implements Runnable{
         DataOutputStream consumerOut =
           new DataOutputStream(tempConsumerSocket.getOutputStream());
 
-        consumerOut.writeBytes("i\n");
+        consumerOut.writeBytes(CoresAllowed + "\n");
         //System.out.println("<Client> sent out: i");
         String res = consumerIn.readLine();
         //System.out.println("<Client> received in: " + res);
@@ -63,6 +63,7 @@ public class ClientImageContainer implements Runnable{
 
         ImageIO.write(Image, ImageType, tempConsumerSocket.getOutputStream());
         res = consumerIn.readLine();
+        FrequencyCounts = ImageProcessing.deserializeVector(res);
 
       } catch (IOException ioe) {
         System.err.println("clientConnect(): Problem connecting to " 
@@ -82,7 +83,7 @@ public class ClientImageContainer implements Runnable{
         DataOutputStream consumerOut =
           new DataOutputStream(tempConsumerSocket.getOutputStream());
 
-        consumerOut.writeBytes("j\n");
+        consumerOut.writeBytes("v\n");
         //System.out.println("<Client> sent out: i");
         String res = consumerIn.readLine();
         //System.out.println("<Client> received in: " + res);
@@ -91,8 +92,14 @@ public class ClientImageContainer implements Runnable{
           System.exit(-1);
         }
 
-        ImageIO.write(Image, ImageType, tempConsumerSocket.getOutputStream());
-        res = consumerIn.readLine();
+        consumerOut.writeBytes(ImageProcessing.serializeVector(FrequencyCounts));
+        
+        BufferedImage imgFromServer;
+        imgFromServer = ImageIO.read(tempConsumerSocket.getInputStream());
+        if(imgFromServer == null){
+          System.err.println("Error image rcvd null");
+          System.exit(-1);
+        }
 
       } catch (IOException ioe) {
         System.err.println("clientConnect(): Problem connecting to " 

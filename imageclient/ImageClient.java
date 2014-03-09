@@ -135,14 +135,16 @@ public class ImageClient {
       ImageClient ic = new ImageClient(masterHost, masterPort);
       ClientProtocol cp = new ClientProtocol(masterHost, masterPort);
       
+      long filesize;
       String imgname;
       while ((imgname = img_list.readLine()) != null) {
         String[] splitImg = ic.checkFormat(imgname);
         if (splitImg[0] == null) continue; //Not a valid image
-
+        filesize = new File(imgname).length();
+        
         boolean imageSucceeded = false;
         while(!imageSucceeded){
-          while(!cp.ConnectToMaster()){
+          while(!cp.ConnectToMaster(filesize)){
             try {
               Thread.sleep(1000);
             } catch (InterruptedException ex) {
@@ -150,7 +152,11 @@ public class ImageClient {
               System.exit(1);
             }
           }
-          imageSucceeded = cp.ConnectToConsumer(splitImg);
+          if(cp.SingleConsumer)
+            imageSucceeded = cp.ConnectToConsumer(splitImg);
+          else{
+            imageSucceeded = cp.ConnectToConsumers(splitImg);
+          }
         }
         
 //        if(ic.masterConnect()){
