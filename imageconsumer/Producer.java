@@ -47,6 +47,7 @@ public class Producer extends Thread {
     
     //Number of available CubbyConsumers
     availCores = new AtomicInteger(NUM_THREADS);
+    uniqueID = new AtomicInteger(0);
     
     sSocket = null;
     this.masterSocket = masterSocket;

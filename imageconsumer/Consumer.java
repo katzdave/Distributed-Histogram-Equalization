@@ -122,6 +122,8 @@ public class Consumer implements Runnable {
     int numThreads = Integer.parseInt(split[1]);
     int uniqID = Producer.getUniqueID();
     sendMessage(clientSocket, READY + DELIM + uniqID);
+    System.out.println("splitAndProcess(): sent 2");
+
     BufferedImage img = null;
     try {
       img = ImageIO.read(clientSocket.getInputStream());
@@ -203,14 +205,18 @@ public class Consumer implements Runnable {
       return;
     }
     sendMessage(clientSocket, READY);
+    System.out.println("applyToImage(): sent 2");
+
     
     String serVec = readMessage(clientSocket);
+    System.out.println("Received values to process");
     int[] valuesToApply = ImageProcessing.deserializeVector(serVec);
     
     Collection<Applyer> dostuff = new LinkedList<Applyer>();
     for (int i=0; i<list.size(); i++) {
       dostuff.add(new Applyer(valuesToApply,list.get(i)));
     }
+    System.out.println("getting ready to do stuff");
     List<Future<BufferedImage>> applylist = null;
     List<BufferedImage> images = new LinkedList<BufferedImage>();
     try {
