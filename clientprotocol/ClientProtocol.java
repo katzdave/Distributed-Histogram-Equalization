@@ -10,8 +10,13 @@ import java.io.*;
 import java.net.*;
 import java.awt.image.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import javax.imageio.ImageIO;
+import imageprocessing.*;
+import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  *
@@ -29,14 +34,17 @@ public class ClientProtocol {
   ConnectionInfo Master;
   ConnectionInfo Consumer;
   List<ConnectionInfo> Backups;
+  List<ConnectionInfo> Consumers;
+  public boolean SingleConsumer;
   
   public ClientProtocol(String masterHost, int masterPort){
     Master = new ConnectionInfo(masterHost, masterPort);
     Backups = new ArrayList<>();
+    Consumers = new ArrayList<>();
     //(new Thread(new BackupListener(BackupPort))).start();
   }
   
-  public boolean ConnectToMaster(){
+  public boolean ConnectToMaster(long filesize){
     System.out.println("Attempting to connect to master");
 
     String backupString;
@@ -49,7 +57,7 @@ public class ClientProtocol {
         new DataOutputStream(masterSocket.getOutputStream());
       
       //Informs the master: "I'm a client. Gimme Consumer Info!"
-      master_out.writeBytes("c\n");
+      master_out.writeBytes("c " + filesize + "\n");
       
       //Master sends most updated list of backups
       backupString = master_in.readLine();
@@ -61,7 +69,7 @@ public class ClientProtocol {
           System.out.println("correctly went in");
           masterSocket.close();
           UpdateMasterFromLeaderString(backupString);
-          return ConnectToMaster();
+          return ConnectToMaster(filesize);
         }
       }
 
@@ -72,7 +80,7 @@ public class ClientProtocol {
       
     } catch (IOException ioe) {
       System.err.println("masterConnect(): Problem connecting to " + Master.HostName);
-      return ConnectToBackup();
+      return ConnectToBackup(filesize);
     }
     
     if(backupString == null || consumerString == null){
@@ -80,14 +88,14 @@ public class ClientProtocol {
       if(backupString != null){
         UpdateBackupsList(backupString);
       }
-      return ConnectToBackup();
+      return ConnectToBackup(filesize);
     }
     
     UpdateBackupsList(backupString);
     return ParseConsumerString(consumerString);
   }
   
-  private boolean ConnectToBackup(){
+  private boolean ConnectToBackup(long filesize){
     boolean isLeader;
     for(int i=0; i<Backups.size(); i++){
       String backupString;
@@ -144,7 +152,7 @@ public class ClientProtocol {
       }
       else {
         UpdateMasterFromLeaderString(backupString);
-        return ConnectToMaster();
+        return ConnectToMaster(filesize);
       }
     } 
     
@@ -160,7 +168,7 @@ public class ClientProtocol {
     try (
       Socket tempConsumerSocket = new Socket(Consumer.HostName, Consumer.Port);
     ){
-	System.out.println("Connected to: " + tempConsumerSocket);
+      System.out.println("Connected to: " + tempConsumerSocket);
       BufferedImage img = ImageIO.read(new File(input));
       if (img == null) {
         // Bad image... is it even possible for it to get this far?
@@ -181,7 +189,7 @@ public class ClientProtocol {
       }
 
       ImageIO.write(img,splitImg[1],tempConsumerSocket.getOutputStream());
-	System.out.println("<Client> sent img: "+img);
+      System.out.println("<Client> sent img: "+img);
       
       BufferedImage imgFromServer;
       imgFromServer = ImageIO.read(tempConsumerSocket.getInputStream());
@@ -200,6 +208,60 @@ public class ClientProtocol {
     }
   }
   
+  @SuppressWarnings("empty-statement")
+  public boolean ConnectToConsumers(String[] splitImg){
+    List<ClientImageContainer> containers = new ArrayList<>();
+    List<BufferedImage> splitImages;
+    
+    String input = splitImg[0] + '.' + splitImg[1];
+    String output = splitImg[0] + "_out." + splitImg[1];
+    
+    BufferedImage image = null;
+    try{
+      image = ImageIO.read(new File(input));
+    }catch(IOException ioe){
+      System.err.println("Bad Image");
+      System.exit(1);
+    }
+    
+    splitImages = ImageProcessing.splitImage(image, Consumers.size());
+    ExecutorService executor = Executors.newFixedThreadPool(Consumers.size()+1);
+    
+    for(int i=0; i<Consumers.size(); i++){
+      ConnectionInfo info = Consumers.get(i);
+      containers.add(new ClientImageContainer(
+              info.HostName,info.Port,info.NumCores,
+              splitImages.get(i),splitImg[1]));
+      executor.execute(containers.get(i));
+    }
+    executor.shutdown();
+    while(!executor.isTerminated()){
+      ;
+    }
+    
+    int[] frequencyCounts = new int[256];
+    Arrays.fill(frequencyCounts, 0);
+    for(int i=0; i<containers.size(); i++){
+      frequencyCounts = ImageProcessing.sumColorFreqs(
+              frequencyCounts, containers.get(i).FrequencyCounts);
+    }
+    frequencyCounts = ImageProcessing.equalizeFreqs(
+            frequencyCounts, (long)image.getHeight()*(long)image.getWidth());
+    
+    executor = Executors.newFixedThreadPool(Consumers.size()+1);
+    
+    for(int i=0; i<containers.size(); i++){
+      containers.get(i).FrequencyCounts = frequencyCounts;
+      executor.execute(containers.get(i));
+    }
+    executor.shutdown();
+    while(!executor.isTerminated()){
+      ;
+    }
+
+    return true;
+  }
+  
   private boolean ParseConsumerString(String cs){
     switch (cs.charAt(0)) {
       case BUSY:
@@ -207,6 +269,27 @@ public class ClientProtocol {
         return false;
       case OK:
         String[] splat = cs.split(DELIM);
+        if(splat.length == 2){
+          String[] ip_port = splat[1].split(DELIM2);
+          Consumer = new ConnectionInfo(ip_port[0], Integer.parseInt(ip_port[1]));
+          SingleConsumer = true;
+        }
+        else{
+          for(int i=1; i<splat.length; i++){
+            Consumers.clear();
+            String[] ip_port = splat[i].split(DELIM2);
+            ConnectionInfo CI = new ConnectionInfo(
+                    ip_port[0], Integer.parseInt(ip_port[1]));
+            if(Consumers.contains(CI)){
+              int indx = Consumers.indexOf(CI);
+              Consumers.get(indx).NumCores += 1;
+            }
+            else{
+              Consumers.add(CI);
+            }            
+            SingleConsumer = false;
+          }
+        }
         Consumer = new ConnectionInfo(splat[1], Integer.parseInt(splat[2]));
         return true;
     }
