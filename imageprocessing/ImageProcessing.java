@@ -109,6 +109,29 @@ public class ImageProcessing {
       return result;
     }
     
+    public static BufferedImage mergeImagesFromCIC(List<ClientImageContainer> images){
+      BufferedImage result;
+      int width = 0;
+      int indwidth = 0;
+      int height = 0;
+      int type = 0;
+      for(int i=0; i<images.size(); i++){
+        width += images.get(i).Image.getWidth();
+        if(i == 0)
+          indwidth = width;
+        if(i == (images.size() - 1)){
+          height = images.get(i).Image.getHeight();
+          type = images.get(i).Image.getType();
+        }
+      }
+      result = new BufferedImage(width, height, type);
+      for(int i=0; i<images.size(); i++){
+        result.createGraphics().drawImage(images.get(i).Image,indwidth*i,0, null);
+      }
+      
+      return result;
+    }
+    
     public static int[] getFrequencyCounts(BufferedImage img){
       int[] colorFreqs = new int[256];
       Arrays.fill(colorFreqs, 0);
@@ -140,6 +163,17 @@ public class ImageProcessing {
       for(int i=0; i<freqs.size(); i++){
         for(int j=0; j<256; j++){
           res[j] += freqs.get(i)[j];
+        }
+      }
+      return res;
+    }
+    
+    public static int[] sumColorFreqsFromCIC(List<ClientImageContainer> freqs){
+      int[] res = new int[256];
+      Arrays.fill(res, 0);
+      for(int i=0; i<freqs.size(); i++){
+        for(int j=0; j<256; j++){
+          res[j] += freqs.get(i).FrequencyCounts[j];
         }
       }
       return res;
