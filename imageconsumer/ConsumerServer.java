@@ -87,21 +87,22 @@ public class ConsumerServer {
     }
   }
   
-  private void updateMaster(String ip, int port) {
-    masterSocket.updateMaster(ip,port);
+  private void updateMaster(String masterIP, int masterPort) {
+    masterSocket.updateMaster(masterIP,masterPort);
     double load = 3.2; // Put SIGAR load here.
     masterSocket.sendMessage("k"+DELIM+port+DELIM+load);
-    System.out.println("Connected to master: " + ip+DELIM2+port);
+    System.out.println("Connected to master: " + masterIP+DELIM2+masterPort);
   }
   
   public static void main(String[] args) throws IOException {
-    if (args.length < 2) {
-      System.err.println("usage: make clienConsumer IP=masters_ip PORT=masters_port");
+    if (args.length < 3) {
+      System.err.println("usage: make clienConsumer IP=masters_ip PORT=masters_port MYPORT=myport");
       System.exit(1);
     }
-    String ip = args[0];
-    int port = Integer.parseInt(args[1]);
-    ConsumerServer cs = new ConsumerServer(1090, ip, port);
+    String masterIP = args[0];
+    int masterPort = Integer.parseInt(args[1]);
+    int port = Integer.parseInt(args[2]);
+    ConsumerServer cs = new ConsumerServer(port, masterIP, masterPort);
     cs.start();
   }
   

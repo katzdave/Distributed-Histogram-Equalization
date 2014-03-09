@@ -14,7 +14,7 @@ NOTE: if SP == SEP && leader's_ipAddress==localhost, this will make the master t
 
 To run the consumer:
 ==========
-make runConsumer IP=(masters_ip_address) PORT=(masters_serverSocketPort)
+make runConsumer IP=(masters_ip_address) PORT=(masters_serverSocketPort) MYPORT=(consumer's port)
 
 To run the client:
 ==========
