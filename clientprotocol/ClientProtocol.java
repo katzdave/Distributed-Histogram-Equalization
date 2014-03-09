@@ -242,10 +242,6 @@ public class ClientProtocol {
     Arrays.fill(frequencyCounts, 0);
     frequencyCounts = ImageProcessing.sumColorFreqsFromCIC(containers);
     
-//    for(int i=0; i<containers.size(); i++){
-//      frequencyCounts = ImageProcessing.sumColorFreqs(
-//              frequencyCounts, containers.get(i).FrequencyCounts);
-//    }
     frequencyCounts = ImageProcessing.equalizeFreqs(
             frequencyCounts, (long)image.getHeight()*(long)image.getWidth());
     
@@ -262,6 +258,14 @@ public class ClientProtocol {
     
     image = ImageProcessing.mergeImagesFromCIC(containers);
     // Write image here!
+
+    try{
+      ImageIO.write(image,splitImg[1],new File(output));
+    }catch(IOException ioe){
+      System.err.println("Bad Image");
+      System.exit(1);
+    }
+    System.out.println("Wrote the image!");
 
     return true;
   }
