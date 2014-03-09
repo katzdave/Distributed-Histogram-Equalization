@@ -6,6 +6,12 @@
 
 package imageconsumer;
 
+import imageprocessing.*;
+
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Collection;
+
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -18,19 +24,33 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import javax.imageio.ImageIO;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 
 /**
  *
  * @author David
  */
 public class Consumer implements Runnable {
+  
+  public static char INDIVIDUAL = 'i';
+  public static char MANY = '#';
+  public static char APPLY = 'v';
+  
   public static String DELIM = " ";
+  public static String READY = "2";
+  
   private MasterWrapper masterSocket;
   private Socket clientSocket;
-  
-  public Consumer(Socket clientSocket, MasterWrapper masterSocket) {
+  private ExecutorService executor;
+  public Consumer(Socket clientSocket, 
+                  MasterWrapper masterSocket, 
+                  ExecutorService executor) {
     this.clientSocket = clientSocket;
     this.masterSocket = masterSocket;
+    this.executor = executor;
   }
   
   @Override
@@ -66,19 +86,34 @@ public class Consumer implements Runnable {
   
   private void processImage(Socket clientSocket, String msg) {
     //Tell the Consumer "I'm ready to do what you want."
-    sendMessage(clientSocket, "2");
+    sendMessage(clientSocket, READY);
     System.out.println("<Consumer>_processImage() sent out: 2");
+    BufferedImage img = null;
+    try {
+      img = ImageIO.read(clientSocket.getInputStream());
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+      return;
+    }
     
-    BufferedImage img = ImageIO.read(clientSocket.getInputStream());
     System.out.println("<Consumer> received img");
     //img = HistogramEQ.histogramEqualization(img);
     BufferedImage outpImg = copyImage(img);
-    
-    ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
+    try {
+      ImageIO.write(outpImg, "PNG", clientSocket.getOutputStream());
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+    }
     System.out.println("<Consumer> sent img.");
     
     updateBusyStatus();
-    clientSocket.close();
+    
+    try {
+      clientSocket.close();
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+      return;
+    }
   }
   
   private void splitAndProcessImage(Socket clientSocket, String msg) {
@@ -87,8 +122,51 @@ public class Consumer implements Runnable {
       System.err.println("<Consumer> received bad message");
       return;
     }
-    int cores = Integer.parseInt(split[1]);
-    //split processes here
+    int numThreads = Integer.parseInt(split[1]);
+    sendMessage(clientSocket, READY);
+    BufferedImage img = null;
+    try {
+      img = ImageIO.read(clientSocket.getInputStream());
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+      return;
+    }
+    
+    System.out.println("<Consumer> received img");
+    List<BufferedImage> list = ImageProcessing.splitImage(img,numThreads);
+    Collection<DoStuff> dostuff = new LinkedList<DoStuff>();
+    for (int i=0; i<numThreads; i++) {
+      dostuff.add(new DoStuff(list.get(i)));
+    }
+    List<Future<int[]>> freqlist = null;
+    try {
+      freqlist = executor.invokeAll(dostuff);
+      int[] sum = freqlist.get(0).get();
+      for (int i=1; i<numThreads; i++) {
+        sum = ImageProcessing.sumColorFreqs(freqlist.get(i).get(),sum);
+      }
+      String sendString = ImageProcessing.serializeVector(sum);
+      sendMessage(clientSocket, sendString);
+      
+    } catch (InterruptedException ie) {
+      ie.printStackTrace();
+    } catch (ExecutionException ee) {
+      ee.printStackTrace();
+    }
+    
+    
+  }
+  class DoStuff implements Callable<int[]> {
+    private BufferedImage img;
+    
+    DoStuff(BufferedImage img) {
+      this.img = img;
+    }
+    
+    @Override
+    public int[] call() {
+      return ImageProcessing.getFrequencyCounts(img);
+    }
   }
   
   private void applyToImage(Socket clientSocket, String msg) {

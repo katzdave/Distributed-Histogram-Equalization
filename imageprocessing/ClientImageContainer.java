@@ -20,6 +20,8 @@ import javax.imageio.ImageIO;
  * @author David
  */
 public class ClientImageContainer implements Runnable{
+  public static String DELIM = " ";
+  
   String ConsumerIP;
   int ConsumerPort;
   int CoresAllowed;
@@ -52,7 +54,7 @@ public class ClientImageContainer implements Runnable{
         DataOutputStream consumerOut =
           new DataOutputStream(tempConsumerSocket.getOutputStream());
 
-        consumerOut.writeBytes(CoresAllowed + "\n");
+        consumerOut.writeBytes("#" + DELIM + CoresAllowed + "\n");
         //System.out.println("<Client> sent out: i");
         String res = consumerIn.readLine();
         //System.out.println("<Client> received in: " + res);

@@ -90,7 +90,7 @@ public class ConsumerServer {
   private void updateMaster(String ip, int port) {
     masterSocket.updateMaster(ip,port);
     double load = 3.2; // Put SIGAR load here.
-    masterSocket.sendMessage("k"+DELIM+port+DELIM+load;
+    masterSocket.sendMessage("k"+DELIM+port+DELIM+load);
     System.out.println("Connected to master: " + ip+DELIM2+port);
   }
   

@@ -64,7 +64,7 @@ public class Producer extends Thread {
           //tell Master we're not too busy.
           masterSocket.sendMessage("a");
         }
-        executorPool.execute(new Consumer(client, masterSocket));
+        executorPool.execute(new Consumer(client, masterSocket,executorPool));
         
       } catch (IOException ioe) {
         System.err.println("Producer.start(): Problem accepting client");
