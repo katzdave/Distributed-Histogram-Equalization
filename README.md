@@ -8,7 +8,7 @@ A distributed histogram equalization program. The clients connect to a master co
 
 To run the master:
 ==========
-make runMaster SP=(masters_serverSocketPort) SEIP=(leader's_ipAddress) SEP=(leader's_port)
+make runMaster MP=(masters_serverSocketPort) LIP=(leader's_ipAddress) LP=(leader's_port)
 
 NOTE: if SP == SEP && leader's_ipAddress==localhost, this will make the master the leader
 

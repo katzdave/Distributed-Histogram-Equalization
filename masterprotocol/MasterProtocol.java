@@ -226,7 +226,7 @@ public class MasterProtocol {
       updateBackupString();
       sendToAllUpdate();
     } else {
-      System.err.println("Disconnection bug!!!");
+      System.err.println("A producer disconnected");
     }
   }
   
