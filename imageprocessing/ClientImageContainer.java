@@ -68,6 +68,7 @@ public class ClientImageContainer implements Runnable{
 
         ImageIO.write(Image, ImageType, tempConsumerSocket.getOutputStream());
         res = consumerIn.readLine();
+        System.out.println("Send image and received counts");
         FrequencyCounts = ImageProcessing.deserializeVector(res);
 
       } catch (IOException ioe) {
@@ -97,14 +98,15 @@ public class ClientImageContainer implements Runnable{
           System.exit(-1);
         }
 
-        consumerOut.writeBytes(ImageProcessing.serializeVector(FrequencyCounts));
+        consumerOut.writeBytes(ImageProcessing.serializeVector(FrequencyCounts) + "\n");
         
-        BufferedImage imgFromServer;
-        imgFromServer = ImageIO.read(tempConsumerSocket.getInputStream());
-        if(imgFromServer == null){
+        Image = ImageIO.read(tempConsumerSocket.getInputStream());
+        if(Image == null){
           System.err.println("Error image rcvd null");
           System.exit(-1);
         }
+
+        System.out.println("Received an image!");
 
       } catch (IOException ioe) {
         System.err.println("clientConnect(): Problem connecting to " 
