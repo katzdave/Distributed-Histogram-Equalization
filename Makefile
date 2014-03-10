@@ -1,11 +1,11 @@
 compile: */*.java
 	mkdir -p out
-	javac -d out $^
+	javac -d out -cp lib/sigar.jar $^
 runConsumer: 
-	java -classpath out/ imageconsumer.ConsumerServer $(IP) $(PORT) $(MYPORT)
+	java -classpath out/ -Djava.library.path=lib/ -cp :lib/sigar.jar imageconsumer.ConsumerServer $(IP) $(PORT) $(MYPORT)
 runClient:
-	java -classpath out/ imageclient.ImageClient $(IP) $(PORT) $(IMGS)
+	java -classpath out/ -Djava.library.path=lib/ -cp :lib/sigar.jar imageclient.ImageClient $(IP) $(PORT) $(IMGS)
 runMaster:
-	java -classpath out/ masterserver.MasterServer $(MP) $(LIP) $(LP)
+	java -classpath out/ -Djava.library.path=lib/ -cp :lib/sigar.jar masterserver.MasterServer $(MP) $(LIP) $(LP)
 runImageTest:
-	java -classpath out/ imageprocessing.ImageProcessing
+	java -classpath out/ -Djava.library.path=lib/ -cp :lib/sigar.jar imageprocessing.ImageProcessing

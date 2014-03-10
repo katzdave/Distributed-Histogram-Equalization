@@ -12,17 +12,21 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.DataOutputStream;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 import javax.imageio.ImageIO;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Callable;
@@ -88,6 +92,13 @@ public class Consumer implements Runnable {
     }
   }
   
+  /*
+   * Processes an individual image.
+   * 1) Tells client "I'm ready" (READY)
+   * 2) Receives image
+   * 3) Histogram Equalizes
+   * 4) Sends image
+   */
   private void processImage(Socket clientSocket, String msg) {
     //Tell the Consumer "I'm ready to do what you want."
     sendMessage(clientSocket, READY);
@@ -235,7 +246,7 @@ public class Consumer implements Runnable {
   
   private void updateBusyStatus() {
     if (Producer.availCores.get() == 0) {
-      masterSocket.sendMessage("a"+DELIM+"3.2"); // SIGAR
+      masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
     }
     Producer.availCores.getAndIncrement();
   }

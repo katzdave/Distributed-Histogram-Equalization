@@ -6,16 +6,22 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 
+import org.hyperic.sigar.Sigar;
+import org.hyperic.sigar.SigarException;
+
 public class MasterWrapper {
 	Socket master = null;
   DataOutputStream ostream;
   BufferedReader istream;
+  Sigar sigar;
   
   public MasterWrapper() {
     //Call updateMaster to begin
+    sigar = new Sigar();
   }
   
 	public MasterWrapper(String ip, int port) {
+    sigar = new Sigar();
     updateMaster(ip,port);		
 	}
   
@@ -50,4 +56,12 @@ public class MasterWrapper {
     }
   }
   
+  public double getLoad() {
+    try {
+      return sigar.getLoadAverage()[0];
+    }
+    catch (SigarException se) {
+      return 10000.0;
+    }
+  }
 }

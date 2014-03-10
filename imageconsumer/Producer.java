@@ -61,7 +61,7 @@ public class Producer extends Thread {
 	  
     this.isrunning = isrunning;
     for (int i=0; i<NUM_THREADS; i++) {
-      masterSocket.sendMessage("a"+DELIM+"3.2");
+      masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
     }
   }
   
@@ -75,7 +75,7 @@ public class Producer extends Thread {
         
         if(availCores.get() > 0) {
           //tell Master we're not too busy.
-          masterSocket.sendMessage("a"+DELIM+"3.2");//SIGAR
+          masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
         }
         
         executorPool.execute(new Consumer(client, 
