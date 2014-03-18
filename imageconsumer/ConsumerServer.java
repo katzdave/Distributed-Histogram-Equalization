@@ -89,14 +89,13 @@ public class ConsumerServer {
   
   private void updateMaster(String masterIP, int masterPort) {
     masterSocket.updateMaster(masterIP,masterPort);
-    double load = 3.2; // Put SIGAR load here.
-    masterSocket.sendMessage("k"+DELIM+port+DELIM+load);
+    masterSocket.sendMessage("k"+DELIM+port+DELIM+masterSocket.getLoad());
     System.out.println("Connected to master: " + masterIP+DELIM2+masterPort);
   }
   
   public static void main(String[] args) throws IOException {
     if (args.length < 3) {
-      System.err.println("usage: make clienConsumer IP=masters_ip PORT=masters_port MYPORT=myport");
+      System.err.println("usage: make runConsumer IP=masters_ip PORT=masters_port MYPORT=myport");
       System.exit(1);
     }
     String masterIP = args[0];
