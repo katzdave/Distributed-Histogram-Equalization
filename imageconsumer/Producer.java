@@ -78,10 +78,10 @@ public class Producer extends Thread {
       try {
         Socket client = sSocket.accept();
         System.out.println("Producer connected to client: " + client);
-        executorPool.execute(new Consumer(client, 
+        executorPool.execute(new HistogramConsumer(client, 
                                           masterSocket, 
-                                          clientMap,
-                                          executorPool));
+                                          executorPool,
+                                          clientMap));
         availCores.getAndDecrement();
         if(availCores.get() > 0) {
           //tell Master we're not too busy.
