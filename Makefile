@@ -2,7 +2,7 @@ compile: */*.java
 	mkdir -p out
 	javac -d out -cp lib/sigar.jar $^
 runConsumer: 
-	java -cp out/:lib/sigar.jar imageconsumer.ConsumerServer $(IP) $(PORT) $(MYPORT)
+	java -cp out/:lib/sigar.jar imageconsumer.Producer $(IP) $(PORT) $(MYPORT)
 runClient:
 	java -classpath out/ imageclient.ImageClient $(IP) $(PORT) $(IMGS)
 runMaster:

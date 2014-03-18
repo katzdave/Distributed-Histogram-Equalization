@@ -24,7 +24,7 @@ import java.util.Arrays;
  *
  * @author Eli
  */
-public class ConsumerServer {
+public class MasterTalker implements Runnable {
   public static String DELIM = " ";
   public static String DELIM2 = "~";
   
@@ -37,19 +37,19 @@ public class ConsumerServer {
   
   private String[] backupList;
 
-  public ConsumerServer(int port, String masterIP, int masterPort) {
+  public MasterTalker(int port,
+                      int masterPort,
+                      String masterIP,
+                      MasterWrapper masterSocket) {
     this.port = port;
     isrunning = true;
 
-    masterSocket = new MasterWrapper();
+    this.masterSocket = masterSocket;
     updateMaster(masterIP,masterPort);
-    
-    producer = new Producer(port, masterSocket, isrunning);
-    producer.start();
-    
   }
   
-  void start() {
+  @Override
+  public void run() {
     while (isrunning) {
       String msg = masterSocket.readMessage();
       if (msg != null) {
@@ -91,18 +91,6 @@ public class ConsumerServer {
     masterSocket.updateMaster(masterIP,masterPort);
     masterSocket.sendMessage("k"+DELIM+port+DELIM+masterSocket.getLoad());
     System.out.println("Connected to master: " + masterIP+DELIM2+masterPort);
-  }
-  
-  public static void main(String[] args) throws IOException {
-    if (args.length < 3) {
-      System.err.println("usage: make runConsumer IP=masters_ip PORT=masters_port MYPORT=myport");
-      System.exit(1);
-    }
-    String masterIP = args[0];
-    int masterPort = Integer.parseInt(args[1]);
-    int port = Integer.parseInt(args[2]);
-    ConsumerServer cs = new ConsumerServer(port, masterIP, masterPort);
-    cs.start();
   }
   
 }

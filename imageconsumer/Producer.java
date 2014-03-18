@@ -40,27 +40,33 @@ public class Producer extends Thread {
   boolean isrunning;
   
   private MasterWrapper masterSocket;
+  private MasterTalker masterComm;
   
   private ConcurrentHashMap<Integer,List<BufferedImage>> clientMap;
 
-  public Producer(int myPort, MasterWrapper masterSocket, boolean isrunning) {
+  public Producer(int port, String masterIP, int masterPort) {
     
     //Number of available CubbyConsumers
     availCores = new AtomicInteger(NUM_THREADS);
     uniqueID = new AtomicInteger(0);
     
     sSocket = null;
-    this.masterSocket = masterSocket;
+    this.masterSocket = new MasterWrapper();
+    masterComm = new MasterTalker(port,masterPort,masterIP,masterSocket);
+    
+    clientMap = new ConcurrentHashMap<Integer,List<BufferedImage>>();
+    executorPool = Executors.newCachedThreadPool();
+	  executorPool.execute(masterComm);
+    
     try {
-      sSocket = new ServerSocket(myPort);
+      sSocket = new ServerSocket(port);
     } catch (IOException e) {
       System.err.println("Problem creating serverSocket ");
       System.exit(0);
     }
-    clientMap = new ConcurrentHashMap<Integer,List<BufferedImage>>();
-    executorPool = Executors.newCachedThreadPool();
-	  
-    this.isrunning = isrunning;
+    
+    
+    isrunning = true;
     for (int i=0; i<NUM_THREADS; i++) {
       masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
     }
@@ -72,18 +78,15 @@ public class Producer extends Thread {
       try {
         Socket client = sSocket.accept();
         System.out.println("Producer connected to client: " + client);
-        availCores.getAndDecrement();
-        
-        if(availCores.get() > 0) {
-          //tell Master we're not too busy.
-          masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
-        }
-        
         executorPool.execute(new Consumer(client, 
                                           masterSocket, 
                                           clientMap,
                                           executorPool));
-        
+        availCores.getAndDecrement();
+        if(availCores.get() > 0) {
+          //tell Master we're not too busy.
+          masterSocket.sendMessage("a"+DELIM+masterSocket.getLoad());
+        }
       } catch (IOException ioe) {
         System.err.println("Producer.start(): Problem accepting client");
       }
@@ -92,5 +95,17 @@ public class Producer extends Thread {
   
   public static int getUniqueID() {
     return uniqueID.getAndIncrement();
+  }
+  
+  public static void main(String[] args) throws IOException {
+    if (args.length < 3) {
+      System.err.println("usage: make runConsumer IP=masters_ip PORT=masters_port MYPORT=myport");
+      System.exit(1);
+    }
+    String masterIP = args[0];
+    int masterPort = Integer.parseInt(args[1]);
+    int port = Integer.parseInt(args[2]);
+    Producer cs = new Producer(port, masterIP, masterPort);
+    cs.start();
   }
 }
